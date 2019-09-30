@@ -58,6 +58,7 @@ public class ArticleDetailFragment extends Fragment implements
     private ObservableScrollView mScrollView;
     private DrawInsetsFrameLayout mDrawInsetsFrameLayout;
     private ColorDrawable mStatusBarColorDrawable;
+    CollapsingToolbarLayout mCollapsingToolbarLayout;
 
     private int mTopInset;
    //mPhotoContainerView;
@@ -121,22 +122,9 @@ public class ArticleDetailFragment extends Fragment implements
             Bundle savedInstanceState) {
         mRootView = inflater.inflate(R.layout.fragment_article_detail, container, false);
 
+        mCollapsingToolbarLayout = (CollapsingToolbarLayout) mRootView.findViewById(R.id.collapsing);
 
-        CollapsingToolbarLayout collapsingToolbarLayout = (CollapsingToolbarLayout) mRootView.findViewById(R.id.collapsing);
 
-        /*
-        mScrollView = (ObservableScrollView) mRootView.findViewById(R.id.scrollview);
-        mScrollView.setCallbacks(new ObservableScrollView.Callbacks() {
-            @Override
-            public void onScrollChanged() {
-                mScrollY = mScrollView.getScrollY();
-                getActivityCast().onUpButtonFloorChanged(mItemId, ArticleDetailFragment.this);
-                mPhotoContainerView.setTranslationY((int) (mScrollY - mScrollY / PARALLAX_FACTOR));
-                updateStatusBar();
-            }
-        });
-
-        */
 
         mPhotoView = mRootView.findViewById(R.id.photo);
         //mPhotoContainerView = mRootView.findViewById(R.id.photo_container);
@@ -208,13 +196,15 @@ public class ArticleDetailFragment extends Fragment implements
         bylineView.setMovementMethod(new LinkMovementMethod());
         TextView bodyView = mRootView.findViewById(R.id.article_body);
 
+
+
         bodyView.setTypeface(Typeface.createFromAsset(getResources().getAssets(), "Rosario-Regular.ttf"));
 
         if (mCursor != null) {
             mRootView.setAlpha(0);
             mRootView.setVisibility(View.VISIBLE);
             mRootView.animate().alpha(1);
-            titleView.setText(mCursor.getString(ArticleLoader.Query.TITLE));
+            mCollapsingToolbarLayout.setTitle(mCursor.getString(ArticleLoader.Query.TITLE));
             Date publishedDate = parsePublishedDate();
             if (!publishedDate.before(START_OF_EPOCH.getTime())) {
                 bylineView.setText(Html.fromHtml(
@@ -226,11 +216,9 @@ public class ArticleDetailFragment extends Fragment implements
                                 + mCursor.getString(ArticleLoader.Query.AUTHOR)
                                 + "</font>"));
 
-                mRootView.findViewById(R.id.progress_bar).setVisibility(View.GONE);
 
             } else {
                 // If date is before 1902, just show the string
-                mRootView.findViewById(R.id.progress_bar).setVisibility(View.VISIBLE);
                 bylineView.setText(Html.fromHtml(
                         outputFormat.format(publishedDate) + " by <font color='#ffffff'>"
                         + mCursor.getString(ArticleLoader.Query.AUTHOR)
@@ -239,31 +227,7 @@ public class ArticleDetailFragment extends Fragment implements
             }
 
 
-
-
-            //bodyView.setText(Html.fromHtml(mCursor.getString(ArticleLoader.Query.BODY).replaceAll("(\r\n|\n)", "<br />")));
-            String b=mCursor.getString(ArticleLoader.Query.BODY);
-            String a = b.replaceAll(">", "&gt;");
-            String a1=a.replaceAll("(\r\n){2}(?!(&gt;))", "<br><br>");
-            String a2=a1.replaceAll("(\r\n)"," ");
-
-            //remove all text between [ and ]
-            String a3=a2.replaceAll("\\[.*?\\]","");
-
-            //put new line after i.e 1. Ebooks aren't marketing.
-            String a4=a3.replaceAll("(\\d\\.\\s.*?\\.)","$1<br>");
-
-            //make text between * * bold
-            String a5=a4.replaceAll("\\*(.*?)\\*", "<b>$1</b>");
-
-            //remove all '>' from text such as 'are >'  but leave the first '>' in tact
-            String a6=a5.replaceAll("(\\w\\s)&gt;", "$1");
-
-            Spanned a7= null;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                a7 = Html.fromHtml(a6,Html.FROM_HTML_MODE_LEGACY);
-            }
-            bodyView.setText(a7);
+            bodyView.setText(formattingText(mCursor.getString(ArticleLoader.Query.BODY)));
 
 
             ImageLoaderHelper.getInstance(getActivity()).getImageLoader()
@@ -286,12 +250,30 @@ public class ArticleDetailFragment extends Fragment implements
 
                         }
                     });
+            getActivity().findViewById(R.id.progress_bar).setVisibility(View.GONE);
         } else {
+            getActivity().findViewById(R.id.progress_bar).setVisibility(View.VISIBLE);
             mRootView.setVisibility(View.GONE);
             titleView.setText("N/A");
             bylineView.setText("N/A" );
             bodyView.setText("N/A");
         }
+
+
+    }
+
+    private String formattingText(String text){
+        String bodyText = text;
+        bodyText = bodyText.replaceAll("(\r\n){2}(?!(&gt;))", "\n\n ");
+        bodyText = bodyText.replaceAll("(\r\n)"," ");
+        bodyText = bodyText.replaceAll("\\[.*?\\]","");
+        bodyText = bodyText.replaceAll("(\\d\\.\\s.*?\\.)","$1\n");
+        bodyText = bodyText.replaceAll("(\\w\\s)&gt;", "$1");
+        bodyText = bodyText.replaceAll("\\#","");
+        bodyText = bodyText.replaceAll("\\!!!","");
+        bodyText = bodyText.replaceAll("\\!!.*?\\!!","");
+        return bodyText;
+
     }
 
     @Override
